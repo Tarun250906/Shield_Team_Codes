@@ -163,7 +163,7 @@ def train():
     explainer = shap.TreeExplainer(final_model_full)
     shap_values = explainer.shap_values(X)
 
-    print("Blending ensemble SHIELD Score = 0.25*anomaly + 0.75*xgb ...")
+    print("Blending ensemble SHIELD Score = 0.15*anomaly + 0.85*xgb ...")
     shield_score = (0.15 * iso_norm_full + 0.85 * xgb_scores_full) * 1000
 
     # ---- persist everything the dashboard AND predict.py need ----
