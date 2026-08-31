@@ -2,7 +2,7 @@
 SHIELD API — backend for the investigator command console.
 
 Serves the already-trained scores/SHAP values from artifacts/, plus mock
-human-in-the-loop actions (freeze / escalate / dismiss) logged to a local
+
 JSON audit trail. Also mounts the static frontend at "/".
 
 Run: uvicorn api:app --reload --port 8000
@@ -47,9 +47,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------------------------------------------------------------------------
-# Load artifacts once at startup
-# ---------------------------------------------------------------------------
+# Load artifacts obtained from training
+
+
 
 _scored: pd.DataFrame = pd.read_parquet(ARTIFACTS / "scored_accounts.parquet")
 _X: pd.DataFrame = pd.read_parquet(ARTIFACTS / "feature_matrix.parquet")
@@ -125,11 +125,8 @@ def _risk_tier(score: float) -> str:
         return "medium"
     return "low"
 
-
-# ---------------------------------------------------------------------------
-# Schemas
-# ---------------------------------------------------------------------------
-
+#schemas
+#pydantic
 class AccountSummary(BaseModel):
     account_id: int
     account_type: str
@@ -142,20 +139,17 @@ class AccountSummary(BaseModel):
     flagged: bool
     risk_tier: str
 
-
 class AccountList(BaseModel):
     total: int
     page: int
     page_size: int
     results: list[AccountSummary]
 
-
 class ShapContribution(BaseModel):
     feature: str
     value: float
     impact: float
     direction: Literal["increases_risk", "decreases_risk"]
-
 
 class AccountDetail(AccountSummary):
     branch_code: int
@@ -167,7 +161,6 @@ class AccountDetail(AccountSummary):
     top_factors: list[ShapContribution]
     narrative: str
 
-
 class NetworkNode(BaseModel):
     id: int
     label: str
@@ -175,12 +168,10 @@ class NetworkNode(BaseModel):
     shield_score: float
     is_focus: bool
 
-
 class NetworkEdge(BaseModel):
     source: int
     target: int
     weight: float
-
 
 class NetworkResponse(BaseModel):
     simulated: bool = True
@@ -188,12 +179,10 @@ class NetworkResponse(BaseModel):
     nodes: list[NetworkNode]
     edges: list[NetworkEdge]
 
-
 class ActionRequest(BaseModel):
     action: Literal["freeze", "escalate", "dismiss"]
     note: Optional[str] = Field(default="", max_length=500)
     investigator: Optional[str] = "demo_investigator"
-
 
 class ActionRecord(BaseModel):
     account_id: int
@@ -201,7 +190,6 @@ class ActionRecord(BaseModel):
     note: str
     investigator: str
     timestamp: float
-
 
 class MetricsResponse(BaseModel):
     n_accounts: int
@@ -214,11 +202,9 @@ class MetricsResponse(BaseModel):
     score_buckets: dict[str, int]
     disclaimer: str
 
-
 class LoginRequest(BaseModel):
     username: str
     password: str
-
 
 class LoginResponse(BaseModel):
     token: str
@@ -226,16 +212,12 @@ class LoginResponse(BaseModel):
     display_name: str
     role: str
 
-
 class SessionUser(BaseModel):
     username: str
     display_name: str
     role: str
 
-
-# ---------------------------------------------------------------------------
 # Helpers
-# ---------------------------------------------------------------------------
 
 def _row_to_summary(row: pd.Series) -> dict:
     score = float(row["shield_score"])
@@ -251,7 +233,6 @@ def _row_to_summary(row: pd.Series) -> dict:
         "flagged": bool(row["flagged"]),
         "risk_tier": _risk_tier(score),
     }
-
 
 def _get_top_factors(account_id: int, k: int = 8) -> list[dict]:
     if account_id in _explanation_cache:
@@ -274,7 +255,6 @@ def _get_top_factors(account_id: int, k: int = 8) -> list[dict]:
     _explanation_cache[account_id] = factors
     return factors
 
-
 def _narrative(account: pd.Series, factors: list[dict]) -> str:
     top = [f for f in factors if f["direction"] == "increases_risk"][:3]
     if not top:
@@ -285,7 +265,6 @@ def _narrative(account: pd.Series, factors: list[dict]) -> str:
         lead += f" and {readable[-1]}"
     tail = f", against an occupation profile of '{account['occupation']}' and account type '{account['account_type']}'."
     return lead + tail
-
 
 def _build_network(account_id: int) -> dict:
     """Simulated ring — NOT derived from real account-to-account transaction
@@ -343,10 +322,7 @@ def _build_network(account_id: int) -> dict:
     _network_cache[account_id] = result
     return result
 
-
-# ---------------------------------------------------------------------------
-# Endpoints
-# ---------------------------------------------------------------------------
+# Endpoints and req
 
 @app.post("/api/auth/login", response_model=LoginResponse)
 def login(req: LoginRequest):
@@ -493,7 +469,6 @@ def take_action(account_id: int, req: ActionRequest, user: dict = Depends(get_cu
     AUDIT_LOG.write_text(json.dumps(log, indent=2))
     return record
 
-
 @app.get("/api/audit-trail", response_model=list[ActionRecord])
 def get_audit_trail(account_id: Optional[int] = None):
     log = json.loads(AUDIT_LOG.read_text())
@@ -502,9 +477,8 @@ def get_audit_trail(account_id: Optional[int] = None):
     return sorted(log, key=lambda r: r["timestamp"], reverse=True)
 
 
-# ---------------------------------------------------------------------------
+
 # Validation dataset upload — score a brand-new CSV with the trained model
-# ---------------------------------------------------------------------------
 
 class ValidationRow(BaseModel):
     account_id: int
@@ -595,9 +569,7 @@ async def validate_dataset(
     }
 
 
-# ---------------------------------------------------------------------------
-# Static frontend
-# ---------------------------------------------------------------------------
+#static frontend
 
 FRONTEND_DIR = BASE / "frontend"
 if FRONTEND_DIR.exists():
