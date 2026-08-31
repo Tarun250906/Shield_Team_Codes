@@ -44,10 +44,11 @@ built in this prototype, not a claim about future work.
 
 **Technical Feasibility**
 - Not a mockup: `train_model.py` trains real models on the real 9,082-account
-  dataset, `api.py` serves real predictions through a documented FastAPI
-  service (`/docs` is live, not staged), and the frontend consumes that
-  API directly — click Freeze/Escalate/Dismiss in the demo and it's a real
-  network call landing in a real audit trail.
+  dataset against the dataset's confirmed fraud target, `api.py` serves real
+  predictions through a documented FastAPI service (`/docs` is live, not
+  staged), and the frontend consumes that API directly — click
+  Freeze/Escalate/Dismiss in the demo and it's a real network call landing
+  in a real audit trail.
 
 **Business Potential**
 - Directly targets a named compliance workflow (SAR drafting, investigator
@@ -59,11 +60,12 @@ built in this prototype, not a claim about future work.
   on — the business value compounds over time, not just at launch.
 
 **Scalability**
-- The scoring pipeline already runs against the full 3,924-feature schema,
-  not a toy feature set; the API is stateless and horizontally scalable as
-  written. `README`'s "Extending this" section below spells out the exact
-  next steps (Kafka ingestion, Neo4j graph, Drools rules) without any
-  rearchitecting of what's already built.
+- The scoring pipeline already runs against the full 3,924-column schema
+  (3,923 input features + the target), not a toy feature set; the API is
+  stateless and horizontally scalable as written. `README`'s "Extending
+  this" section below spells out the exact next steps (Kafka ingestion,
+  Neo4j graph, Drools rules) without any rearchitecting of what's already
+  built.
 
 **User Experience**
 - One consistent design system across all ten pages — same sidebar, same
@@ -89,17 +91,63 @@ built in this prototype, not a claim about future work.
   the bank's actual IAM/SSO stack, not a claim that this is production
   security.
 
+## Model architecture
+
+```
+                DataSet.csv
+                    │
+       ┌────────────┴─────────────┐
+       │                          │
+  F1 ... F3923                 F3924
+       │                          │
+       ▼                          ▼
+   FEATURES (X)               FRAUD_TGT (y)
+       │                          │
+       ├──────────────┐           │
+       │              │           │
+       ▼              ▼           ▼
+  Preprocessing   Isolation    XGBoost
+                    Forest        │
+                       │          │
+                       │          ▼
+                       │     Fraud Probability
+                       │          │
+                       └────┬─────┘
+                             ▼
+                      SHIELD Score
+                             │
+                             ▼
+                    Risk Tier / Flag
+```
+
+- **Model 1 — Isolation Forest**: 300 trees, unsupervised, fit on the
+  standardized 444-feature matrix. No labels used.
+- **Model 2 — XGBoost**: supervised, trained on the dataset's confirmed
+  `FRAUD_TGT` target (`F3924`), which is always excluded from the feature
+  matrix `X`. Evaluated with a genuine 80/20 held-out split.
+- **SHIELD Score**: blends the two signals —
+
+  ```
+  SHIELD Score = 0.15 × Isolation Forest anomaly score
+               + 0.85 × XGBoost fraud probability,
+  scaled to 0–1000
+  ```
+
+  The heavier weight on the supervised classifier reflects that it's
+  trained directly against a confirmed fraud outcome; the anomaly score
+  stays in the blend to surface accounts that don't fit the patterns the
+  classifier has already learned.
+
 ## What's real vs. simulated (read before demoing)
 
 | Area | Status |
 |---|---|
 | Isolation Forest anomaly score | ✅ Real, trained on the dataset |
-| XGBoost classifier | ✅ Real, trained + cross-validated + genuine 20% held-out split |
-| Ensemble SHIELD Score (0.25 anomaly + 0.75 XGB, scaled 0–1000) | ✅ Real |
+| XGBoost classifier | ✅ Real, trained on the dataset's confirmed `FRAUD_TGT` target, cross-validated + genuine 20% held-out split |
+| Ensemble SHIELD Score (0.15 anomaly + 0.85 XGB, scaled 0–1000) | ✅ Real |
 | SHAP explanations | ✅ Real `shap.TreeExplainer` output, per account |
 | Accounts / Overview / Account Detail pages | ✅ Backed by the real API and real scores |
-| **Validate page / `predict.py`** | ✅ Real — scores any uploaded CSV with the exact persisted training artifacts (scaler, Isolation Forest, categorical encoding, imputation medians, anomaly-score normalization range). Verified to reproduce training-time scores to within floating-point precision (max diff `5.7e-14` across a 500-row test). |
-| **No ground-truth labels** | ⚠️ The dataset has no confirmed mule/fraud label. XGBoost is trained on **rule-derived proxy labels**, deliberately built from two narrow, independent signals (occupation/volume mismatch + a bounded extreme-value outlier count) rather than a raw sum of every model feature — see the label-leakage note below. AUC: **0.980 out-of-fold, 0.986 on a genuine 20% held-out split** never touched during fitting. Both numbers are disclosed on-screen (Overview KPI, Model Monitor, disclosure modal) with an explanation of why they're still high. Don't remove either the numbers or the explanation. |
+| **Validate page / `predict.py`** | ✅ Real — scores any uploaded CSV with the exact persisted training artifacts (scaler, Isolation Forest, categorical encoding, imputation medians, anomaly-score normalization range). `F3924` is excluded from scoring even if present in the uploaded file. Verified to reproduce training-time scores to within floating-point precision (max diff `5.7e-14` across a 500-row test). |
 | **Ring Detection / Network graph** | ⚠️ Simulated. The dataset has no account-to-account transaction records, so rings are built by grouping same-occupation, elevated-risk accounts. Clearly labeled "SIMULATED / PROTOTYPE" on screen. |
 | **Alerts, Investigations, SAR Queue, Model Monitor trend/drift, Data Feeds** | ⚠️ Simulated. These pages have no backing dataset (no alert log, no transaction ledger, no case-management system, no live feed integration exists). Data is deterministically generated from real account IDs/scores so it's stable across navigation, but it is not real activity — tagged with a "SIMULATED / PROTOTYPE" badge throughout. |
 | Kafka ingestion, Neo4j graph DB, Drools rule engine, SAR filing to FIU-IND | ❌ Not built — described in the solution doc as next-phase engineering, not attempted here. |
@@ -109,29 +157,6 @@ vs. simulated is a stronger pitch than pretending everything is production
 data — and it directly maps to the solution doc's own Section 4.8
 feedback-loop design (real investigator decisions → real labels → real
 retraining), which this prototype's audit trail is built to feed into.
-
-### A note on label leakage (read this if you're asked about the AUC)
-
-An earlier version of this pipeline built the pseudo-label from a raw sum
-of every model input feature, plus the Isolation Forest's own output —
-both near-deterministic functions of the same matrix fed to XGBoost. That
-produced a ~99.6% AUC that looked impressive but was largely circular.
-Cross-validation does **not** catch this kind of leakage, because the
-leakage lives in how the label is *defined*, not in how the model is
-*fit* — that's why the number stayed high even out-of-fold.
-
-The current version (`train_model.py`) builds the label from two narrow,
-documented rule signals instead — an occupation/volume mismatch and a
-bounded count of statistically extreme feature values — and deliberately
-excludes the Isolation Forest's output from label construction, so the
-two ensemble members stay independent. It also carves out a genuine 20%
-holdout **before** any fitting or threshold tuning and reports that
-number separately from the k-fold OOF figure. Both AUCs are still high
-(0.980 / 0.986) — that's expected and disclosed, not a remaining bug: any
-proxy label built without confirmed fraud outcomes will correlate with
-the features that describe the same accounts to some degree. Treat these
-numbers as evidence the pipeline works end-to-end, not as a validated
-real-world detection rate.
 
 ## Scoring a validation dataset (e.g. from judges)
 
@@ -144,7 +169,8 @@ in the sidebar, drag in a CSV, click Run Validation. You'll get a scored
 table, risk distribution, a CSV download, and — importantly — a warning
 banner if the uploaded file's columns don't match training's schema
 exactly (missing columns get imputed with training's medians; unrecognized
-columns are dropped; both are reported, not hidden).
+columns are dropped; `F3924` is excluded if present; all of this is
+reported, not hidden).
 
 **From the command line:**
 ```bash
@@ -159,13 +185,13 @@ scores are directly comparable to what's shown elsewhere in the console.
 
 ## How to run it
 
-
 **Fastest path — one server, everything included:**
 
 ```bash
 cd shield_prototype
 pip install -r requirements.txt
 uvicorn api:app --reload --port 8000
+// if uvicorn didnt run use -  " python -m uvicorn api:app --reload --port 8000 "
 ```
 
 Open **http://localhost:8000** — the built frontend is served directly by
@@ -182,7 +208,7 @@ separate dev servers instead:
 ```bash
 # Terminal 1 — backend
 cd shield_prototype
-uvicorn api:app --reload --port 8010
+  uvicorn api:app --reload --port 8010
 
 # Terminal 2 — frontend (hot reload)
 cd shield_frontend
@@ -205,8 +231,8 @@ cp -r dist ../shield_prototype/frontend
 ```
 shield_prototype/
 ├── data/DataSet.csv          # hackathon dataset (add your own — not bundled, 116MB)
-├── data_pipeline.py           # cleaning, sentinel (-1) handling, encoding (train + apply modes)
-├── train_model.py             # Isolation Forest + XGBoost + SHAP + ensemble scoring + holdout eval
+├── data_pipeline.py           # cleaning, sentinel (-1) handling, encoding (train + apply modes), TARGET_COL
+├── train_model.py             # Isolation Forest + XGBoost (on FRAUD_TGT) + SHAP + ensemble + holdout eval
 ├── predict.py                 # CLI: score any new CSV with the persisted training artifacts
 ├── api.py                     # FastAPI backend — scoring, SHAP, ring data, /api/validate, auth, audit trail
 ├── frontend/                  # BUILT React console (served by api.py) — this is dist/ output
@@ -237,7 +263,7 @@ shield_frontend/                # React source — edit here, then `npm run buil
 | `GET /api/accounts` | Paginated, filterable, sortable risk queue |
 | `GET /api/accounts/{id}` | Full detail + SHAP top factors + narrative |
 | `GET /api/accounts/{id}/network` | Simulated ring/cluster graph data |
-| `GET /api/metrics` | Portfolio KPIs + both AUC figures + the honest disclaimer |
+| `GET /api/metrics` | Portfolio KPIs + model performance metrics |
 | `GET /api/filters` | Distinct occupation/account-type/segment values for filter dropdowns |
 | `POST /api/accounts/{id}/action` | Freeze/escalate/dismiss (auth required), logged to `artifacts/audit_trail.json` |
 | `GET /api/audit-trail` | Investigator action history |
@@ -248,8 +274,9 @@ shield_frontend/                # React source — edit here, then `npm run buil
 
 - Open on **Login** — mention it's session-gated and case actions require
   auth server-side, then sign in with the demo analyst account.
-- Land on **Overview** — real KPIs, the proxy-label AUC caveat front and
-  center, not buried in a tooltip.
+- Land on **Overview** — real KPIs, driven by a classifier trained on the
+  dataset's own confirmed fraud target, front and center, not buried in a
+  tooltip.
 - **Alerts → click one → drawer** shows the real SHAP explanation pulled
   live from the model, not canned text.
 - **Accounts → click a critical account → Account Detail**: real score,
@@ -264,20 +291,22 @@ shield_frontend/                # React source — edit here, then `npm run buil
   app. If the schema doesn't match exactly, the warning banner says so
   instead of silently producing wrong numbers — point that out, it's a
   deliberate design choice, not a bug you're hoping no one notices.
-- **Model Monitor**: show both AUC numbers (k-fold OOF and genuine
-  held-out) and be ready to explain, briefly, why they're still high —
-  it's a property of weak supervision without confirmed labels, not
-  overfitting; the explanation is right there on the page if you want to
-  just read it aloud.
+- **Model Monitor**: walk through the SHIELD Score formula (0.15
+  anomaly + 0.85 classifier) and the held-out performance metrics — be
+  ready to explain the weighting choice: the classifier carries most of
+  the weight because it's trained against a real, confirmed fraud
+  outcome, while the anomaly score still catches accounts that look
+  unusual in ways the classifier hasn't learned to flag.
 - Pop open **`/docs`** for 10 seconds — a clean, auto-generated FastAPI
   Swagger UI signals "this is a real API," which is a stronger signal than
   any dashboard polish.
 
 ## Extending this into the full architecture
 
-- Swap the proxy-label generator in `train_model.py` for a real label
-  column once SAR outcomes are available — the retraining loop `Settings`
-  page's Audit Settings section is designed around this feedback path.
+- Once investigator-confirmed outcomes accumulate in the audit trail, feed
+  them back into future retraining alongside `FRAUD_TGT` — the
+  `Settings` page's Audit Settings section is designed around this
+  feedback path.
 - Replace `_build_network()` in `api.py` with real transaction-pair edges
   and swap NetworkX/d3-force for Neo4j + Louvain/PageRank at scale.
 - Replace `lib/mock/generators.ts` calls page-by-page with real endpoints
