@@ -29,7 +29,7 @@ st.set_page_config(page_title="SHIELD - Mule Detection Prototype", layout="wide"
 
 ARTIFACTS = "artifacts"
 
-#to load artifacts generated from training
+
 @st.cache_data
 def load_artifacts():
     scored = pd.read_parquet(f"{ARTIFACTS}/scored_accounts.parquet")
@@ -99,6 +99,7 @@ st.title("🛡️ SHIELD — Mule Account Detection (Prototype)")
 st.caption("Scaled-down demo of the SHIELD solution doc's ML + graph detection layers. "
            "Not the full production Kafka/Flink/Neo4j pipeline — see README for scope.")
 
+# ---------------- KPI row ----------------
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Accounts scored", f"{metrics['n_accounts']:,}")
 c2.metric("Flagged (score ≥ 650)", f"{metrics['flagged_count']:,}")

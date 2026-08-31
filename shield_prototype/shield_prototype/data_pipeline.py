@@ -2,7 +2,7 @@
 SHIELD Prototype - Data Pipeline
 --------------------------------
 Loads the hackathon DataSet.csv, separates identity/categorical metadata
-from nearly 3,900 engineered numeric features, handles the -1 sentinel
+from the ~3,900 engineered numeric features, handles the -1 sentinel
 value (per the solution doc: -1 means "not applicable / insufficient
 history" and must NOT be imputed like a real missing value), and
 produces a clean feature matrix ready for modeling.
@@ -67,13 +67,13 @@ def build_feature_matrix(df: pd.DataFrame, categories: dict | None = None, media
     """
     df = df.copy()
 
-    #metadata for display (kept human-readable, not modeled directly) 
+    # ---- metadata for display (kept human-readable, not modeled directly) ----
     meta = pd.DataFrame({"account_id": df["account_id"]})
     for label, col in META_COLS.items():
         if col in df.columns:
             meta[label] = df[col]
 
-    # categorical encoding (fixed category list, not refit per file) 
+    # ---- categorical encoding (fixed category list, not refit per file) ----
     cat_df = df[[c for c in CATEGORICAL_COLS if c in df.columns]].copy()
     cat_df = cat_df.fillna("UNKNOWN").astype(str)
 

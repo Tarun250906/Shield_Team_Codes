@@ -1,0 +1,14 @@
+{
+  "n_accounts": 1010,
+  "n_features": 442,
+  "fraud_positive_rate": 0.011881188118811881,
+  "oof_auc": 0.8875313283208021,
+  "holdout_auc": 0.84,
+  "holdout_size": 202,
+  "flagged_count": 12,
+  "target_column": "F3924",
+  "target_values": [
+    0,
+    1
+  ]
+}
