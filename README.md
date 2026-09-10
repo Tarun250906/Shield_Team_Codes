@@ -1,162 +1,282 @@
-SHIELD — Mule Account Risk Console
+=# SHIELD — Mule Account Risk Detection System
 
-SHIELD is a prototype fraud-risk investigation platform that helps financial institutions identify potentially suspicious accounts, understand why they were flagged, and prioritize them for investigation.
+SHIELD is an AI-powered prototype designed to help banks identify and investigate **potential mule accounts** and suspicious account activity.
 
-It combines machine learning, explainable AI, and an investigator dashboard into one system.
+It combines **Machine Learning, anomaly detection, explainable AI, and a risk-analysis dashboard** to help investigators prioritize high-risk accounts.
 
-What SHIELD does
-Assigns a 0–1000 risk score to accounts.
-Combines Isolation Forest anomaly detection with XGBoost classification.
-Shows the main factors contributing to an account's risk using SHAP explanations.
-Provides searchable, filterable account records.
-Allows investigators to freeze, escalate, or dismiss cases.
-Maintains an audit trail of investigator actions.
-Supports uploading a new CSV to test the trained model.
-Includes a simulated network view to demonstrate how suspicious account relationships could be explored.
-How it works
+---
+
+## 🚀 Key Features
+
+-  **Account Risk Scoring** — Assigns each account a risk score from 0–1000.
+-  **Machine Learning Detection** — Uses XGBoost for risk classification.
+-  **Anomaly Detection** — Uses Isolation Forest to identify unusual account behavior.
+-  **Explainable AI** — SHAP explains the major factors contributing to an account's risk.
+-  **Investigator Dashboard** — View accounts, alerts, risk levels, and model metrics.
+-  **Network Analysis** — Provides a prototype view of potentially related high-risk accounts.
+-  **CSV Validation** — Upload account data and generate risk scores without retraining the model.
+-  **Investigation Actions** — Freeze, escalate, or dismiss accounts with an audit trail.
+-  **Authentication** — Demo login and protected investigation actions.
+
+---
+
+## 🧠 How SHIELD Works
+
+```text
 Account Data
      ↓
 Data Preprocessing
      ↓
-Isolation Forest + XGBoost
+Feature Engineering
      ↓
-Combined SHIELD Score
-     ↓
-Risk Tier
-     ↓
-Investigator Dashboard
-     ↓
-Review → Investigate → Take Action
-Risk levels
-Score	Risk level
-0–400	Low
-401–650	Medium
-651–800	High
-801–1000	Critical
-Technology Stack
+ ┌───────────────────────┐
+ │                       │
+ ▼                       ▼
+XGBoost            Isolation Forest
+ │                       │
+ └──────────┬────────────┘
+            ↓
+       Risk Score
+            ↓
+     Risk Classification
+            ↓
+   Investigator Dashboard
+            ↓
+   Investigation / Action
+```
 
-Frontend
+SHIELD combines the outputs of a supervised XGBoost model and an Isolation Forest anomaly detector to generate a final risk score.
 
-React
-TypeScript
-Tailwind CSS
-React Router
+---
 
-Backend
+## 🛠️ Technology Stack
 
-Python
-FastAPI
-Pandas
-NumPy
+### Backend
+- Python
+- FastAPI
+- Pandas
+- NumPy
+- Scikit-learn
+- XGBoost
+- SHAP
 
-Machine Learning
+### Frontend
+- React
+- TypeScript
+- Tailwind CSS
 
-Isolation Forest
-XGBoost
-SHAP
+### Data & Storage
+- CSV
+- Parquet
+- Joblib
+- JSON
 
-Data & Storage
+---
 
-Parquet
-NumPy artifacts
-JSON audit trail
-Project Structure
-shield_prototype/
+## 📁 Project Structure
+
+```text
+SHIELD/
 │
 ├── api.py                  # FastAPI backend
 ├── train_model.py          # Model training
-├── predict.py              # Prediction on new CSV files
+├── predict.py              # Model inference and scoring
 ├── data_pipeline.py        # Data preprocessing
-├── requirements.txt        # Python dependencies
-├── README.md
+├── app.py                  # Streamlit prototype
 │
-├── data/                   # Input datasets
-├── artifacts/              # Trained models and generated outputs
+├── data/
+│   └── DataSet.csv         # Input dataset
 │
-└── frontend/               # Built React frontend
-How to Run
-1. Clone the repository
-git clone https://github.com/Tarun250906/Shield_Team_Codes.git
-cd Shield_Team_Codes
-2. Install dependencies
+├── artifacts/
+│   ├── xgb_model.json
+│   ├── iso_forest.joblib
+│   ├── scaler.joblib
+│   ├── feature_names.json
+│   ├── scored_accounts.parquet
+│   ├── shap_values.npy
+│   └── metrics.json
+│
+├── frontend/
+│   └── assets/             # React frontend
+│
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## 📊 Risk Levels
+
+| Score | Risk Level |
+|------:|------------|
+| 0–400 | 🟢 Low |
+| 401–650 | 🟡 Medium |
+| 651–800 | 🟠 High |
+| 801–1000 | 🔴 Critical |
+
+Accounts with higher scores are prioritized for investigation.
+
+---
+
+## 🧠 Explainable AI
+
+SHIELD uses **SHAP (SHapley Additive exPlanations)** to explain why an account received a particular risk score.
+
+For every account, investigators can see:
+
+- Top contributing features
+- Positive and negative risk factors
+- A simple explanation of the account's risk
+
+This makes the model easier for investigators to understand rather than treating it as a black box.
+
+---
+
+## ⚙️ Installation
+
+### 1. Clone the repository
+
+```bash
+git clone <YOUR_REPOSITORY_URL>
+cd Cyber-shield-mule-acc-detection
+```
+
+### 2. Create a virtual environment
+
+```bash
+python -m venv venv
+```
+
+Activate it:
+
+**Windows**
+```bash
+venv\Scripts\activate
+```
+
+**Linux / macOS**
+```bash
+source venv/bin/activate
+```
+
+### 3. Install dependencies
+
+```bash
 pip install -r requirements.txt
-3. Start the backend
-python -m uvicorn api:app --reload --port 8000
-4. Open the application
+```
 
-Visit:
+---
 
+## ▶️ Run SHIELD
+
+Start the FastAPI backend:
+
+```bash
+uvicorn api:app --reload --port 8000
+```
+
+Open the application:
+
+```text
 http://localhost:8000
+```
 
-API documentation:
+FastAPI API documentation:
 
+```text
 http://localhost:8000/docs
+```
 
-The backend serves the built frontend, so one server is enough to run the demo.
+---
 
-Demo Login
+## 🔐 Demo Login
 
-The prototype includes demo accounts:
-
+```text
 Username: analyst
 Password: shield123
-Username: admin
-Password: shield123
+```
 
-Note: These are demonstration credentials, not production authentication.
+> These credentials are for demonstration purposes only and should be replaced with proper authentication in production.
 
-Validate a New Dataset
+---
 
-SHIELD supports testing a new CSV using the same trained model artifacts used by the application.
+## 📁 CSV Validation
 
-New CSV
-   ↓
+The **Validation** feature allows investigators to upload a CSV file and generate risk scores for accounts.
+
+```text
+CSV Upload
+    ↓
+Schema Check
+    ↓
 Preprocessing
-   ↓
-Trained Models
-   ↓
-Risk Scores
-   ↓
-Validation Results
+    ↓
+Feature Transformation
+    ↓
+ML Inference
+    ↓
+Risk Score
+    ↓
+Risk Level
+```
 
-The validation process does not retrain the model.
+The validation process performs **inference only** and does not retrain the models.
 
-You can also use the command line:
+---
 
-python predict.py --input /path/to/validation.csv --output predictions.csv
+## 🔌 API Endpoints
 
-The uploaded CSV must contain the features expected by the trained model.
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/auth/login` | User login |
+| POST | `/api/auth/logout` | Logout |
+| GET | `/api/accounts` | Get account list |
+| GET | `/api/accounts/{account_id}` | Account details |
+| GET | `/api/accounts/{account_id}/network` | Network analysis |
+| GET | `/api/metrics` | Model metrics |
+| GET | `/api/filters` | Available filters |
+| POST | `/api/accounts/{account_id}/action` | Investigation action |
+| GET | `/api/audit-trail` | View audit trail |
+| POST | `/api/validate` | Validate uploaded CSV |
 
-API Endpoints
-Endpoint	Purpose
-GET /api/accounts	View accounts with filters and sorting
-GET /api/accounts/{id}	View account details and SHAP explanations
-GET /api/accounts/{id}/network	View simulated account network
-GET /api/metrics	View model and portfolio metrics
-POST /api/validate	Upload and score a new CSV
-POST /api/accounts/{id}/action	Freeze, escalate, or dismiss an account
-GET /api/audit-trail	View investigator actions
-POST /api/auth/login	Login
-GET /api/auth/me	View current user
-POST /api/auth/logout	Logout
-Important Prototype Notes
+---
 
-SHIELD is a hackathon prototype, not a production banking system.
+## ⚠️ Prototype Disclaimer
 
-The trained models and SHAP explanations are real.
-The validation feature uses the persisted training artifacts.
-The network/ring view is simulated because the current dataset does not contain real account-to-account transaction links.
-Some investigation and monitoring pages use simulated data.
-Authentication is demo-grade and should be replaced with production SSO, MFA, RBAC, and secure session management.
-Production deployment would require real transaction data, confirmed fraud labels, stronger security, and integration with banking systems.
-Future Improvements
-Real-time transaction ingestion using Kafka.
-Stream processing using Flink or similar technology.
-Real transaction graph using Neo4j.
-Advanced graph algorithms for ring detection.
-Production authentication with SSO, MFA, and RBAC.
-Continuous model monitoring and retraining using investigator feedback.
-Integration with banking case-management and reporting systems.
-Team
+SHIELD is a **hackathon prototype** intended to demonstrate an approach to mule-account risk detection.
 
-Developed as part of the BOI Hackathon at IIT Hyderabad.
+The current prototype uses available account data and model-generated/proxy signals rather than confirmed real-world fraud labels.
+
+The network-analysis component is also a prototype because the available dataset does not contain real account-to-account transaction relationships.
+
+Therefore, the system should **not be used as a production fraud-decision system without further validation and real banking data**.
+
+---
+
+## 🔮 Future Improvements
+
+- Real-time transaction ingestion using **Kafka**
+- Stream processing using **Apache Flink**
+- Real transaction graphs using **Neo4j**
+- Production-grade SSO, MFA and RBAC
+- Real confirmed fraud labels
+- Continuous model monitoring and retraining
+- Feature stores for real-time features
+- Scalable model serving
+- Advanced case-management and SAR workflows
+
+---
+
+## 🎯 Objective
+
+The goal of SHIELD is to provide investigators with a **single, explainable and scalable interface** for identifying high-risk accounts and prioritizing suspicious accounts for further investigation.
+
+> **Detect early. Explain clearly. Investigate smarter.**
+
+---
+
+## 👥 Team
+
+Developed as part of the **BOI CyberShield Hackathon**.
+
+**SHIELD — Mule Account Risk Detection System**
