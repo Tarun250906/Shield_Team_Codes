@@ -1,10 +1,6 @@
 # SHIELD — Mule Account Risk Console
 
-A working, scaled-down implementation of the ML + graph analytics core
-described in `SHIELD_Solution_Document_Final.docx`, wrapped in a full
-fraud-operations console UI. Built to be demoable in a hackathon setting,
-**not** the full production architecture (no real Kafka/Flink/Neo4j/Drools
-deployment here — see "Scope" below).
+
 
 ## What's in this build
 
@@ -15,10 +11,12 @@ deployment here — see "Scope" below).
   (freeze/escalate/dismiss) now requires a valid bearer token and logs the
   real logged-in analyst's name to the audit trail. See the Security
   section below for what's real vs. simplified here.
+  
 - **Backend** (`api.py`) — FastAPI service wrapping the trained models:
   paginated/filterable/sortable account queue, per-account SHAP
   explanations, simulated ring-detection endpoint, mock case-action
   endpoint (freeze/escalate/dismiss) with a persistent audit trail.
+  
 - **Frontend** (`frontend/`, built from `../shield_frontend`) — a full
   React + TypeScript + Tailwind + React Router console: Overview, Alerts,
   Accounts, Account Detail (with SHAP + simulated ring view + transactions),
@@ -29,7 +27,7 @@ deployment here — see "Scope" below).
 - **`frontend_classic/`** — the original single-page dashboard from the
   first prototype pass, kept as a lightweight fallback if you ever want it.
 
-## Evaluation criteria mapping
+
 
 Quick reference for judging — every point below maps to something already
 built in this prototype, not a claim about future work.
