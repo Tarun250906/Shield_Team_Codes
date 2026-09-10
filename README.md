@@ -1,4 +1,4 @@
-=# SHIELD — Mule Account Risk Detection System
+## SHIELD — Mule Account Risk Detection System
 
 SHIELD is an AI-powered prototype designed to help banks identify and investigate **potential mule accounts** and suspicious account activity.
 
