@@ -1,0 +1,16 @@
+.git/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.log
+*.tmp
+*.temp
+
+# Duplicate frontend source folders
+shield_frontend/
+frontend_classic/
+
+# Raw datasets (exclude only if not needed by the running API)
+data/DataSet.csv
+data/DataSetValid.csv

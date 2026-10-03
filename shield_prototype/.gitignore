@@ -48,3 +48,8 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Raw and generated datasets (keep the directory usage note)
+/shield_prototype/data/*
+!/shield_prototype/data/README_DATA.txt
+shield_prototype/data/*.csv
